@@ -4,4 +4,5 @@ version = "0.1.0"
 authors = ["Andrew O'Neill <foolusion@gmail.com>"]
 
 [dependencies]
+byteorder = "1.0.0"
 sha1 = "0.2.0"
