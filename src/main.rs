@@ -8,22 +8,22 @@ use rand::Rng;
 fn main() {
     println!("Hello, world!");
     let e = Experiment {
-        name: "this".to_string(),
-        namespace: "namespace".to_string(),
+        name: String::from("this"),
+        namespace: String::from("namespace"),
         params: vec![Param {
-                         name: "p1".to_string(),
-                         choices: Choices::Uniform(vec!["a".to_string(), "b".to_string()]),
+                         name: String::from("p1"),
+                         choices: Choices::Uniform(vec![String::from("a"), String::from("b")]),
                      }],
         segments: vec![255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
                        255],
     };
     let e2 = Experiment {
-        name: "that".to_string(),
-        namespace: "arstneio".to_string(),
+        name: String::from("that"),
+        namespace: String::from("arstneio"),
         params: vec![Param {
-                         name: "my-param".to_string(),
-                         choices: Choices::Weighted(vec![("a".to_string(), 1.0),
-                                                         ("b".to_string(), 2.0)]),
+                         name: String::from("my-param"),
+                         choices: Choices::Weighted(vec![(String::from("a"), 1.0),
+                                                         (String::from("b"), 2.0)]),
                      }],
         segments: vec![255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
                        255],
@@ -67,7 +67,7 @@ fn gen_name(len: i32) -> String {
     for _ in 0..len {
         match alpha.bytes().nth(rng.gen::<usize>() % alpha.len()) {
             Some(c) => out.push(c as char),
-            None => return "".to_string(),
+            None => return String::new(),
         }
     }
     return out;
