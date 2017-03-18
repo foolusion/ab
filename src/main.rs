@@ -22,18 +22,22 @@ fn main() {
         namespace: "arstneio".to_string(),
         params: vec![Param {
                          name: "my-param".to_string(),
-                         choices: Choices::Weighted(vec![("a".to_string(), 1.0), ("b".to_string(), 2.0)]),
+                         choices: Choices::Weighted(vec![("a".to_string(), 1.0),
+                                                         ("b".to_string(), 2.0)]),
                      }],
         segments: vec![255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
                        255],
     };
 
     let mut scores = std::collections::HashMap::new();
-    for i in 0..60000 {
+    for _ in 0..60000 {
         let userid = gen_name(10);
         let exp1 = match eval_test(&e2, &userid) {
             Ok(exp) => exp,
-            Err(e) => {println!("{}", e); return},
+            Err(e) => {
+                println!("{}", e);
+                return;
+            }
         };
         for p in exp1.params.iter() {
             let key = format!("{}.{}", p.name, p.choice);
@@ -42,7 +46,10 @@ fn main() {
         }
         let exp2 = match eval_test(&e, &userid) {
             Ok(exp) => exp,
-            Err(e) => { println!("{}", e); return},
+            Err(e) => {
+                println!("{}", e);
+                return;
+            }
         };
         for p in exp2.params.iter() {
             let key = format!("{}.{}", p.name, p.choice);
@@ -57,13 +64,13 @@ fn gen_name(len: i32) -> String {
     let alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
     let mut rng = rand::thread_rng();
     let mut out: String = String::new();
-    for i in 0..len {
-        match alpha.bytes().nth(rng.gen::<usize>()%alpha.len()) {
+    for _ in 0..len {
+        match alpha.bytes().nth(rng.gen::<usize>() % alpha.len()) {
             Some(c) => out.push(c as char),
             None => return "".to_string(),
         }
-    };
-    return out
+    }
+    return out;
 }
 
 struct Experiment {
@@ -97,9 +104,7 @@ struct ParamExperience<'a> {
     choice: &'a str,
 }
 
-fn eval_test<'a>(exp: &'a Experiment,
-                     user_id: &'a String)
-                     -> Result<Experience<'a>, &'a str> {
+fn eval_test<'a>(exp: &'a Experiment, user_id: &'a String) -> Result<Experience<'a>, &'a str> {
     let salt = "choices".to_string();
     let exp_hash = hash(&salt, &exp.namespace, &exp.name, &String::new(), user_id);
 
@@ -114,10 +119,12 @@ fn eval_test<'a>(exp: &'a Experiment,
         params.push(ParamExperience {
             name: &param.name,
             choice: match param.choices {
-                Choices::Weighted(ref w) => match eval_weighted(w, hash){
-                    Ok(s) => s,
-                    Err(e) => return Err(e),
-                },
+                Choices::Weighted(ref w) => {
+                    match eval_weighted(w, hash) {
+                        Ok(s) => s,
+                        Err(e) => return Err(e),
+                    }
+                }
                 Choices::Uniform(ref u) => eval_uniform(u, hash),
             },
         })
@@ -137,9 +144,7 @@ fn eval_weighted<'a>(choices: &Vec<(String, f64)>, hash: u64) -> Result<&str, &s
         })
         .collect();
     let x = get_uniform(0.0, partitions[partitions.len() - 1].1, hash);
-    match partitions.iter().find(|&&(_, p)| {
-        x < p
-    }) {
+    match partitions.iter().find(|&&(_, p)| x < p) {
         Some(&(ref s, _)) => Ok(s),
         None => Err("could not determine choice"),
     }
@@ -162,7 +167,12 @@ fn hash(salt: &String,
         user_id: &String)
         -> u64 {
     let mut m = sha1::Sha1::new();
-    let hash_string = format!("{}:{}:{}:{}:{}", salt, namespace, experiment_name, param_name, user_id);
+    let hash_string = format!("{}:{}:{}:{}:{}",
+                              salt,
+                              namespace,
+                              experiment_name,
+                              param_name,
+                              user_id);
     m.update(hash_string.as_bytes());
     let a = &m.digest().bytes()[0..16];
     BigEndian::read_u64(a)
@@ -173,9 +183,7 @@ fn valid_segment<'a, 'b>(segments: &Vec<u8>, hash: u64) -> Option<&'b str> {
     let pos: u64 = hash % ((segments.len() as u64) * 8);
     let byte: u8 = segments[(pos / 8) as usize];
     match 1 << (pos % 8) & byte {
-        0 => {
-            return Some("segment not activated")
-        }
+        0 => return Some("segment not activated"),
         _ => None,
     }
 }
