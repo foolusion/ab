@@ -105,8 +105,8 @@ struct ParamExperience<'a> {
 }
 
 fn eval_test<'a>(exp: &'a Experiment, user_id: &'a String) -> Result<Experience<'a>, &'a str> {
-    let salt = "choices".to_string();
-    let exp_hash = hash(&salt, &exp.namespace, &exp.name, &String::new(), user_id);
+    let salt = "choices";
+    let exp_hash = hash(&salt, &exp.namespace, &exp.name, "", user_id);
 
     match valid_segment(&exp.segments, exp_hash) {
         Some(e) => return Err(e),
@@ -160,11 +160,11 @@ fn get_uniform(min: f64, max: f64, hash: u64) -> f64 {
     min + (max - min) * zero_to_one
 }
 
-fn hash(salt: &String,
-        namespace: &String,
-        experiment_name: &String,
-        param_name: &String,
-        user_id: &String)
+fn hash(salt: &str,
+        namespace: &str,
+        experiment_name: &str,
+        param_name: &str,
+        user_id: &str)
         -> u64 {
     let mut m = sha1::Sha1::new();
     let hash_string = format!("{}:{}:{}:{}:{}",
