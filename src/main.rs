@@ -8,21 +8,21 @@ use rand::Rng;
 fn main() {
     println!("Hello, world!");
     let e = Experiment {
-        name: "this",
-        namespace: "namespace",
+        name: "this".to_string(),
+        namespace: "namespace".to_string(),
         params: vec![Param {
-                         name: "p1",
-                         choices: Choices::Uniform(vec!["a", "b"]),
+                         name: "p1".to_string(),
+                         choices: Choices::Uniform(vec!["a".to_string(), "b".to_string()]),
                      }],
         segments: vec![255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
                        255],
     };
     let e2 = Experiment {
-        name: "that",
-        namespace: "arstneio",
+        name: "that".to_string(),
+        namespace: "arstneio".to_string(),
         params: vec![Param {
-                         name: "my-param",
-                         choices: Choices::Weighted(vec![("a", 1.0), ("b", 2.0)]),
+                         name: "my-param".to_string(),
+                         choices: Choices::Weighted(vec![("a".to_string(), 1.0), ("b".to_string(), 2.0)]),
                      }],
         segments: vec![255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
                        255],
@@ -53,7 +53,7 @@ fn main() {
     println!("{:?}", scores)
 }
 
-fn gen_name<'a>(len: i32) -> String {
+fn gen_name(len: i32) -> String {
     let alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
     let mut rng = rand::thread_rng();
     let mut out: String = String::new();
@@ -66,41 +66,42 @@ fn gen_name<'a>(len: i32) -> String {
     return out
 }
 
-struct Experiment<'a> {
-    name: &'a str,
-    namespace: &'a str,
-    params: Vec<Param<'a>>,
+struct Experiment {
+    name: String,
+    namespace: String,
+    params: Vec<Param>,
     segments: Vec<u8>,
 }
 
-struct Param<'a> {
-    name: &'a str,
-    choices: Choices<'a>,
+struct Param {
+    name: String,
+    choices: Choices,
 }
 
-enum Choices<'a> {
-    Weighted(Vec<(&'a str, f64)>),
-    Uniform(Vec<(&'a str)>),
+enum Choices {
+    Weighted(Vec<(String, f64)>),
+    Uniform(Vec<String>),
 }
 
 #[derive(Debug)]
-struct Experience<'a> {
-    name: &'a str,
-    namespace: &'a str,
-    params: Vec<ParamExperience<'a>>,
+struct Experience {
+    name: String,
+    namespace: String,
+    params: Vec<ParamExperience>,
 }
 
 #[derive(Debug)]
 // ParamExperience is a result from hashing the user and determining their experience.
-struct ParamExperience<'a> {
-    name: &'a str,
-    choice: &'a str,
+struct ParamExperience {
+    name: String,
+    choice: String,
 }
 
 fn eval_test<'a, 'b>(exp: &'a Experiment,
-                     user_id: &'b str)
-                     -> Result<Experience<'a>, &'a str> {
-    let exp_hash = hash("choices", exp.namespace, exp.name, "", user_id);
+                     user_id: &'a String)
+                     -> Result<Experience, String> {
+    let salt = "choices".to_string();
+    let exp_hash = hash(&salt, &exp.namespace, &exp.name, &String::new(), user_id);
 
     match valid_segment(&exp.segments, exp_hash) {
         Some(e) => return Err(e),
@@ -109,9 +110,9 @@ fn eval_test<'a, 'b>(exp: &'a Experiment,
 
     let mut params: Vec<ParamExperience> = Vec::new();
     for param in exp.params.iter() {
-        let hash = hash("choices", exp.namespace, exp.name, param.name, user_id);
+        let hash = hash(&salt, &exp.namespace, &exp.name, &param.name, user_id);
         params.push(ParamExperience {
-            name: param.name,
+            name: param.name.clone(),
             choice: match param.choices {
                 Choices::Weighted(ref w) => match eval_weighted(w, hash){
                     Ok(s) => s,
@@ -122,30 +123,30 @@ fn eval_test<'a, 'b>(exp: &'a Experiment,
         })
     }
     Ok(Experience {
-        name: exp.name,
-        namespace: exp.namespace,
+        name: exp.name.clone(),
+        namespace: exp.namespace.clone(),
         params: params,
     })
 }
 
-fn eval_weighted<'a>(choices: &Vec<(&'a str, f64)>, hash: u64) -> Result<&'a str, &'a str> {
-    let partitions: Vec<(&str, f64)> = choices.iter()
-        .scan(0f64, |accum, &(s, w)| {
+fn eval_weighted<'a>(choices: &Vec<(String, f64)>, hash: u64) -> Result<String, String> {
+    let partitions: Vec<(String, f64)> = choices.iter()
+        .scan(0f64, |accum, &(ref s, w)| {
             *accum += w;
-            Some((s, *accum))
+            Some((s.clone(), *accum))
         })
         .collect();
     let x = get_uniform(0.0, partitions[partitions.len() - 1].1, hash);
     match partitions.iter().find(|&&(_, p)| {
         x < p
     }) {
-        Some(&(s, _)) => Ok(s),
-        None => Err("could not determine choice"),
+        Some(&(ref s, _)) => Ok(s.clone()),
+        None => Err("could not determine choice".to_string()),
     }
 }
 
-fn eval_uniform<'a>(choices: &Vec<&'a str>, hash: u64) -> &'a str {
-    choices[(hash as usize) % choices.len()]
+fn eval_uniform<'a>(choices: &Vec<String>, hash: u64) -> String {
+    choices[(hash as usize) % choices.len()].clone()
 }
 
 fn get_uniform(min: f64, max: f64, hash: u64) -> f64 {
@@ -154,11 +155,11 @@ fn get_uniform(min: f64, max: f64, hash: u64) -> f64 {
     min + (max - min) * zero_to_one
 }
 
-fn hash(salt: &str,
-        namespace: &str,
-        experiment_name: &str,
-        param_name: &str,
-        user_id: &str)
+fn hash(salt: &String,
+        namespace: &String,
+        experiment_name: &String,
+        param_name: &String,
+        user_id: &String)
         -> u64 {
     let mut m = sha1::Sha1::new();
     let hash_string = format!("{}:{}:{}:{}:{}", salt, namespace, experiment_name, param_name, user_id);
@@ -168,12 +169,12 @@ fn hash(salt: &str,
 }
 
 // valid_segment if a segment is valid None will be returned
-fn valid_segment<'a>(segments: &Vec<u8>, hash: u64) -> Option<&str> {
+fn valid_segment<'a>(segments: &Vec<u8>, hash: u64) -> Option<String> {
     let pos: u64 = hash % ((segments.len() as u64) * 8);
     let byte: u8 = segments[(pos / 8) as usize];
     match 1 << (pos % 8) & byte {
         0 => {
-            return Some("segment not activated")
+            return Some("segment not activated".to_string())
         }
         _ => None,
     }
