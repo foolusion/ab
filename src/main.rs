@@ -84,22 +84,22 @@ enum Choices {
 }
 
 #[derive(Debug)]
-struct Experience {
-    name: String,
-    namespace: String,
-    params: Vec<ParamExperience>,
+struct Experience<'a> {
+    name: &'a str,
+    namespace: &'a str,
+    params: Vec<ParamExperience<'a>>,
 }
 
 #[derive(Debug)]
 // ParamExperience is a result from hashing the user and determining their experience.
-struct ParamExperience {
-    name: String,
-    choice: String,
+struct ParamExperience<'a> {
+    name: &'a str,
+    choice: &'a str,
 }
 
-fn eval_test<'a, 'b>(exp: &'a Experiment,
+fn eval_test<'a>(exp: &'a Experiment,
                      user_id: &'a String)
-                     -> Result<Experience, String> {
+                     -> Result<Experience<'a>, &'a str> {
     let salt = "choices".to_string();
     let exp_hash = hash(&salt, &exp.namespace, &exp.name, &String::new(), user_id);
 
@@ -112,7 +112,7 @@ fn eval_test<'a, 'b>(exp: &'a Experiment,
     for param in exp.params.iter() {
         let hash = hash(&salt, &exp.namespace, &exp.name, &param.name, user_id);
         params.push(ParamExperience {
-            name: param.name.clone(),
+            name: &param.name,
             choice: match param.choices {
                 Choices::Weighted(ref w) => match eval_weighted(w, hash){
                     Ok(s) => s,
@@ -123,30 +123,30 @@ fn eval_test<'a, 'b>(exp: &'a Experiment,
         })
     }
     Ok(Experience {
-        name: exp.name.clone(),
-        namespace: exp.namespace.clone(),
+        name: &exp.name,
+        namespace: &exp.namespace,
         params: params,
     })
 }
 
-fn eval_weighted<'a>(choices: &Vec<(String, f64)>, hash: u64) -> Result<String, String> {
-    let partitions: Vec<(String, f64)> = choices.iter()
+fn eval_weighted<'a>(choices: &Vec<(String, f64)>, hash: u64) -> Result<&str, &str> {
+    let partitions: Vec<(&str, f64)> = choices.iter()
         .scan(0f64, |accum, &(ref s, w)| {
             *accum += w;
-            Some((s.clone(), *accum))
+            Some((&s[..], *accum))
         })
         .collect();
     let x = get_uniform(0.0, partitions[partitions.len() - 1].1, hash);
     match partitions.iter().find(|&&(_, p)| {
         x < p
     }) {
-        Some(&(ref s, _)) => Ok(s.clone()),
-        None => Err("could not determine choice".to_string()),
+        Some(&(ref s, _)) => Ok(s),
+        None => Err("could not determine choice"),
     }
 }
 
-fn eval_uniform<'a>(choices: &Vec<String>, hash: u64) -> String {
-    choices[(hash as usize) % choices.len()].clone()
+fn eval_uniform<'a>(choices: &Vec<String>, hash: u64) -> &str {
+    &choices[(hash as usize) % choices.len()]
 }
 
 fn get_uniform(min: f64, max: f64, hash: u64) -> f64 {
@@ -169,12 +169,12 @@ fn hash(salt: &String,
 }
 
 // valid_segment if a segment is valid None will be returned
-fn valid_segment<'a>(segments: &Vec<u8>, hash: u64) -> Option<String> {
+fn valid_segment<'a, 'b>(segments: &Vec<u8>, hash: u64) -> Option<&'b str> {
     let pos: u64 = hash % ((segments.len() as u64) * 8);
     let byte: u8 = segments[(pos / 8) as usize];
     match 1 << (pos % 8) & byte {
         0 => {
-            return Some("segment not activated".to_string())
+            return Some("segment not activated")
         }
         _ => None,
     }
