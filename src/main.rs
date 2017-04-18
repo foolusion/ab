@@ -73,7 +73,7 @@ fn gen_name(len: i32) -> String {
     return out;
 }
 
-// Experiment is the representation of an experiment.
+/// Experiment is the representation of an experiment.
 struct Experiment {
     name: String,
     namespace: String,
@@ -81,24 +81,24 @@ struct Experiment {
     segments: Vec<u8>,
 }
 
-// Param is the representation of a single param within an experiment.
-// Params can contain either uniform or weighted choices.
+/// Param is the representation of a single param within an
+/// experiment. Params can contain either uniform or weighted choices.
 struct Param {
     name: String,
     choices: Choices,
 }
 
-// Choices is a representation of the choices a param offers. Uniform
-// choices will have equal probability of selecting any of it's
-// variants. Weighted choices will have probabilies proportional to
-// the weights.
+/// Choices is a representation of the choices a param offers. Uniform
+/// choices will have equal probability of selecting any of it's
+/// variants. Weighted choices will have probabilies proportional to
+/// the weights.
 enum Choices {
     Weighted(Vec<(String, f64)>),
     Uniform(Vec<String>),
 }
 
 #[derive(Debug)]
-// Experience is the result of evaluating an Experiment.
+/// Experience is the result of evaluating an Experiment.
 struct Experience<'a> {
     name: &'a str,
     namespace: &'a str,
@@ -106,16 +106,16 @@ struct Experience<'a> {
 }
 
 #[derive(Debug)]
-// ParamExperience is a result from hashing the user and determining
-// their experience.
+/// ParamExperience is a result from hashing the user and determining
+/// their experience.
 struct ParamExperience<'a> {
     name: &'a str,
     choice: &'a str,
 }
 
-// TODO: rename to eval_experiment
-// eval_test evaluates an experiment and returns the experience or an
-// error if the user was not in the experiment.
+/// eval_test evaluates an experiment and returns the experience or an
+/// error if the user was not in the experiment.
+/// TODO: rename to eval_experiment
 fn eval_test<'a>(exp: &'a Experiment, user_id: &'a String) -> Result<Experience<'a>, &'a str> {
     let salt = "choices";
     let exp_hash = hash(&salt, &exp.namespace, &exp.name, "", user_id);
@@ -129,27 +129,28 @@ fn eval_test<'a>(exp: &'a Experiment, user_id: &'a String) -> Result<Experience<
     for param in exp.params.iter() {
         let hash = hash(&salt, &exp.namespace, &exp.name, &param.name, user_id);
         params.push(ParamExperience {
-            name: &param.name,
-            choice: match param.choices {
-                Choices::Weighted(ref w) => {
-                    match eval_weighted(w, hash) {
-                        Ok(s) => s,
-                        Err(e) => return Err(e),
-                    }
-                }
-                Choices::Uniform(ref u) => eval_uniform(u, hash),
-            },
-        })
+                        name: &param.name,
+                        choice: match param.choices {
+                            Choices::Weighted(ref w) => {
+                                match eval_weighted(w, hash) {
+                                    Ok(s) => s,
+                                    Err(e) => return Err(e),
+                                }
+                            }
+                            Choices::Uniform(ref u) => eval_uniform(u, hash),
+                        },
+                    })
     }
     Ok(Experience {
-        name: &exp.name,
-        namespace: &exp.namespace,
-        params: params,
-    })
+           name: &exp.name,
+           namespace: &exp.namespace,
+           params: params,
+       })
 }
 
 fn eval_weighted<'a>(choices: &Vec<(String, f64)>, hash: u64) -> Result<&str, &str> {
-    let partitions: Vec<(&str, f64)> = choices.iter()
+    let partitions: Vec<(&str, f64)> = choices
+        .iter()
         .scan(0f64, |accum, &(ref s, w)| {
             *accum += w;
             Some((&s[..], *accum))
@@ -166,17 +167,17 @@ fn eval_uniform<'a>(choices: &Vec<String>, hash: u64) -> &str {
     &choices[(hash as usize) % choices.len()]
 }
 
-// get_uniform returns a uniformly distributed random value between
-// min and max.
+/// get_uniform returns a uniformly distributed random value between
+/// min and max.
 fn get_uniform(min: f64, max: f64, hash: u64) -> f64 {
     const LONG_SCALE: f64 = 0xFF_FF_FF_FF_FF_FF_FF_FFu64 as f64;
     let zero_to_one = (hash as f64) / LONG_SCALE;
     min + (max - min) * zero_to_one
 }
 
-// hash generates a "random" u64, used in evaluating experiments. It
-// takes the sha1 of the supplied strings separated by colons and
-// returns a u64 from the first 16 bytes of the sha1.
+/// hash generates a "random" u64, used in evaluating experiments. It
+/// takes the sha1 of the supplied strings separated by colons and
+/// returns a u64 from the first 16 bytes of the sha1.
 fn hash(salt: &str,
         namespace: &str,
         experiment_name: &str,
@@ -195,7 +196,7 @@ fn hash(salt: &str,
     BigEndian::read_u64(a)
 }
 
-// valid_segment if a segment is valid None will be returned
+/// valid_segment if a segment is valid None will be returned
 fn valid_segment<'a, 'b>(segments: &Vec<u8>, hash: u64) -> Option<&'b str> {
     let pos: u64 = hash % ((segments.len() as u64) * 8);
     let byte: u8 = segments[(pos / 8) as usize];
